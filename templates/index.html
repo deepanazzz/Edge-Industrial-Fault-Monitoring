@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+<title>Industrial Fault Monitoring</title>
+
+<link rel="stylesheet"
+href="{{ url_for('static', filename='style.css') }}">
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+</head>
+
+<body>
+
+<div class="header">
+
+<h1>INDUSTRIAL MOTOR FAULT MONITORING SYSTEM</h1>
+
+<h3>Edge Intelligence with SNN + LoRa IoT</h3>
+
+<div id="clock"></div>
+
+</div>
+
+<div class="cards">
+
+<div class="card">
+<h2>RMS VALUE</h2>
+<h1 id="rms">0</h1>
+</div>
+
+<div class="card">
+<h2>SPIKE RATE</h2>
+<h1 id="spike">0</h1>
+</div>
+
+<div class="card">
+<h2>MOTOR STATUS</h2>
+<h1 id="status">NORMAL</h1>
+</div>
+
+<div class="card">
+<h2>FAULT SEVERITY</h2>
+<h1 id="severity">0%</h1>
+</div>
+
+</div>
+
+<div class="row">
+
+<div class="panel">
+
+<h2>RMS OVER TIME</h2>
+
+<canvas id="rmsChart"></canvas>
+
+</div>
+
+<div class="panel">
+
+<h2>SPIKE RATE OVER TIME</h2>
+
+<canvas id="spikeChart"></canvas>
+
+</div>
+
+</div>
+
+<div class="statusPanel">
+
+<div id="indicator"></div>
+
+<div>
+
+<h1 id="bigStatus">NORMAL</h1>
+
+<p>Motor Condition</p>
+
+</div>
+
+</div>
+
+<div class="flow">
+
+<h2>DATA FLOW</h2>
+
+<p>
+
+ADXL345 → ESP32 →
+RMS + Spike Encoding →
+LoRa → Raspberry Pi →
+Dashboard
+
+</p>
+
+</div>
+
+<script>
+
+let rmsData=[];
+let spikeData=[];
+let labels=[];
+
+const rmsChart=new Chart(
+document.getElementById('rmsChart'),
+{
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:'RMS',
+data:rmsData
+}]
+}
+}
+);
+
+const spikeChart=new Chart(
+document.getElementById('spikeChart'),
+{
+type:'line',
+data:{
+labels:labels,
+datasets:[{
+label:'Spike Rate',
+data:spikeData
+}]
+}
+}
+);
+
+function updateData(){
+
+fetch('/data')
+
+.then(response=>response.json())
+
+.then(data=>{
+
+document.getElementById("rms").innerHTML=data.rms;
+
+document.getElementById("spike").innerHTML=data.spike;
+
+document.getElementById("severity").innerHTML=
+data.severity+"%";
+
+document.getElementById("status").innerHTML=
+data.status;
+
+document.getElementById("bigStatus").innerHTML=
+data.status;
+
+if(data.status=="FAULT"){
+
+document.getElementById("indicator")
+.style.background="red";
+
+}
+else{
+
+document.getElementById("indicator")
+.style.background="lime";
+
+}
+
+labels.push(data.time);
+
+rmsData.push(data.rms);
+
+spikeData.push(data.spike);
+
+if(labels.length>20){
+
+labels.shift();
+
+rmsData.shift();
+
+spikeData.shift();
+
+}
+
+rmsChart.update();
+
+spikeChart.update();
+
+});
+
+}
+
+setInterval(updateData,1000);
+
+</script>
+
+</body>
+
+</html>
