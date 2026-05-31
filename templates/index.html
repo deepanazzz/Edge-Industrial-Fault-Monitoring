@@ -1,198 +1,190 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
-
-<title>Industrial Fault Monitoring</title>
-
-<link rel="stylesheet"
-href="{{ url_for('static', filename='style.css') }}">
-
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Motor Monitor</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 </head>
-
 <body>
 
-<div class="header">
+<div class="shell">
 
-<h1>INDUSTRIAL MOTOR FAULT MONITORING SYSTEM</h1>
+  <!-- ── TOPBAR ──────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar-brand">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/>
+      </svg>
+      MOTOR&nbsp;MONITOR
+    </div>
+    <div class="topbar-right">
+      <span class="uptime-label">UPTIME: <span id="uptimeLabel">00:00:00</span></span>
+      <div id="statusPill" class="status-pill normal">
+        <span class="dot"></span> NORMAL
+      </div>
+      <button class="reset-btn" id="resetBtn">↺ RESET</button>
+    </div>
+  </header>
 
-<h3>Edge Intelligence with SNN + LoRa IoT</h3>
+  <!-- ── SIDEBAR ─────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-section">NAVIGATION</div>
 
-<div id="clock"></div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
+      Dashboard
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      Vibration
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81a19.79 19.79 0 01-3.07-8.63A2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></svg>
+      LoRa
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      Alerts
+    </div>
 
+    <div class="sidebar-section" style="margin-top:10px">LIVE STATS</div>
+    <div class="sidebar-stats">
+      <div class="sidebar-stat">
+        <span class="label">Uptime</span>
+        <span class="val" id="sideUptime">—</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="label">Faults</span>
+        <span class="val" id="sideFaults">0</span>
+      </div>
+      <div class="sidebar-stat">
+        <span class="label">RSSI</span>
+        <span class="val" id="sideRSSI">—</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ────────────────────────────────────────────────────── -->
+  <main class="main">
+
+    <!-- Row 1: Metric cards -->
+    <div class="metrics-row">
+      <div class="metric-card" style="--accent-color:#b06aff">
+        <div class="metric-label">RMS VIBRATION</div>
+        <div class="metric-value"><span id="valRMS">0.000</span><span>g</span></div>
+        <div class="metric-sub">Acceleration magnitude</div>
+      </div>
+      <div class="metric-card" style="--accent-color:#ff4db8">
+        <div class="metric-label">FAULT SEVERITY</div>
+        <div class="metric-value"><span id="valSeverity">0.0</span><span>%</span></div>
+        <div class="metric-sub">Current severity index</div>
+      </div>
+      <div class="metric-card" style="--accent-color:#7b4fff">
+        <div class="metric-label">SPIKE COUNT</div>
+        <div class="metric-value"><span id="valSpikes">0</span><span></span></div>
+        <div class="metric-sub">Spikes in last window</div>
+      </div>
+      <div class="metric-card" style="--accent-color:#ffd166">
+        <div class="metric-label">TOTAL FAULTS</div>
+        <div class="metric-value"><span id="valFaults">0</span><span></span></div>
+        <div class="metric-sub">Since session start</div>
+      </div>
+    </div>
+
+    <!-- Row 2: Gauges -->
+    <div class="gauge-row">
+      <div class="gauge-card">
+        <div class="gauge-label-main">RMS GAUGE</div>
+        <canvas id="gaugeRMS" width="130" height="90"></canvas>
+      </div>
+      <div class="gauge-card">
+        <div class="gauge-label-main">SEVERITY</div>
+        <canvas id="gaugeSeverity" width="130" height="90"></canvas>
+      </div>
+      <div class="gauge-card">
+        <div class="gauge-label-main">LoRa SNR</div>
+        <canvas id="gaugeSNR" width="130" height="90"></canvas>
+      </div>
+    </div>
+
+    <!-- Row 3: Charts -->
+    <div class="charts-row">
+      <div class="card">
+        <div class="card-title">RMS VIBRATION HISTORY</div>
+        <div class="chart-wrap">
+          <canvas id="rmsChart"></canvas>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">FAULT SEVERITY TREND</div>
+        <div class="chart-wrap">
+          <canvas id="severityChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 4: Axis bars + Alert log -->
+    <div class="axes-alert-row">
+      <div class="card">
+        <div class="card-title">ACCELEROMETER AXES (ADXL345)</div>
+        <div class="axis-bars">
+          <div class="axis-row">
+            <span class="axis-name">X</span>
+            <div class="axis-track"><div class="axis-fill" id="fillX" style="width:0%"></div></div>
+            <span class="axis-val" id="valX">0.000</span>
+          </div>
+          <div class="axis-row">
+            <span class="axis-name">Y</span>
+            <div class="axis-track"><div class="axis-fill" id="fillY" style="width:0%"></div></div>
+            <span class="axis-val" id="valY">0.000</span>
+          </div>
+          <div class="axis-row">
+            <span class="axis-name">Z</span>
+            <div class="axis-track"><div class="axis-fill" id="fillZ" style="width:0%"></div></div>
+            <span class="axis-val" id="valZ">0.000</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">ALERT LOG</div>
+        <div class="alert-log" id="alertLog">
+          <div class="alert-item ok-item">
+            <span class="alert-icon">✅</span>
+            <div class="alert-text">
+              <div class="alert-msg">System initialised — monitoring active</div>
+              <div class="alert-time">now</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 5: LoRa stats -->
+    <div class="lora-row">
+      <div class="lora-stat">
+        <div class="ls-label">RSSI</div>
+        <div class="ls-val"><span id="loraRSSI">—</span><span> dBm</span></div>
+      </div>
+      <div class="lora-stat">
+        <div class="ls-label">SNR</div>
+        <div class="ls-val"><span id="loraSNR">—</span><span> dB</span></div>
+      </div>
+      <div class="lora-stat">
+        <div class="ls-label">PACKETS SENT</div>
+        <div class="ls-val"><span id="loraPackets">—</span></div>
+      </div>
+      <div class="lora-stat">
+        <div class="ls-label">PROTOCOL</div>
+        <div class="ls-val" style="font-size:13px">LoRa 915MHz</div>
+      </div>
+    </div>
+
+  </main>
 </div>
 
-<div class="cards">
-
-<div class="card">
-<h2>RMS VALUE</h2>
-<h1 id="rms">0</h1>
-</div>
-
-<div class="card">
-<h2>SPIKE RATE</h2>
-<h1 id="spike">0</h1>
-</div>
-
-<div class="card">
-<h2>MOTOR STATUS</h2>
-<h1 id="status">NORMAL</h1>
-</div>
-
-<div class="card">
-<h2>FAULT SEVERITY</h2>
-<h1 id="severity">0%</h1>
-</div>
-
-</div>
-
-<div class="row">
-
-<div class="panel">
-
-<h2>RMS OVER TIME</h2>
-
-<canvas id="rmsChart"></canvas>
-
-</div>
-
-<div class="panel">
-
-<h2>SPIKE RATE OVER TIME</h2>
-
-<canvas id="spikeChart"></canvas>
-
-</div>
-
-</div>
-
-<div class="statusPanel">
-
-<div id="indicator"></div>
-
-<div>
-
-<h1 id="bigStatus">NORMAL</h1>
-
-<p>Motor Condition</p>
-
-</div>
-
-</div>
-
-<div class="flow">
-
-<h2>DATA FLOW</h2>
-
-<p>
-
-ADXL345 → ESP32 →
-RMS + Spike Encoding →
-LoRa → Raspberry Pi →
-Dashboard
-
-</p>
-
-</div>
-
-<script>
-
-let rmsData=[];
-let spikeData=[];
-let labels=[];
-
-const rmsChart=new Chart(
-document.getElementById('rmsChart'),
-{
-type:'line',
-data:{
-labels:labels,
-datasets:[{
-label:'RMS',
-data:rmsData
-}]
-}
-}
-);
-
-const spikeChart=new Chart(
-document.getElementById('spikeChart'),
-{
-type:'line',
-data:{
-labels:labels,
-datasets:[{
-label:'Spike Rate',
-data:spikeData
-}]
-}
-}
-);
-
-function updateData(){
-
-fetch('/data')
-
-.then(response=>response.json())
-
-.then(data=>{
-
-document.getElementById("rms").innerHTML=data.rms;
-
-document.getElementById("spike").innerHTML=data.spike;
-
-document.getElementById("severity").innerHTML=
-data.severity+"%";
-
-document.getElementById("status").innerHTML=
-data.status;
-
-document.getElementById("bigStatus").innerHTML=
-data.status;
-
-if(data.status=="FAULT"){
-
-document.getElementById("indicator")
-.style.background="red";
-
-}
-else{
-
-document.getElementById("indicator")
-.style.background="lime";
-
-}
-
-labels.push(data.time);
-
-rmsData.push(data.rms);
-
-spikeData.push(data.spike);
-
-if(labels.length>20){
-
-labels.shift();
-
-rmsData.shift();
-
-spikeData.shift();
-
-}
-
-rmsChart.update();
-
-spikeChart.update();
-
-});
-
-}
-
-setInterval(updateData,1000);
-
-</script>
-
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
 </body>
-
 </html>
